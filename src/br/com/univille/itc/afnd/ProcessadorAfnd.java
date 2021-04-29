@@ -1,10 +1,11 @@
 package br.com.univille.itc.afnd;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Scanner;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ProcessadorAfnd {
 
@@ -12,12 +13,19 @@ public class ProcessadorAfnd {
 	public static final int LINHA_ESTADOS = 1;
 	public static final int LINHA_ALFABETOS = 2;
 
+	/**
+	 * Método que da inicio ao processo da execução do automato
+	 */
 	public static void iniciarProcesso() {
 		DadosAfnd dados = obterRegras();
 		List<String> entradas = Arrays.asList("0", "1");
 		executar(dados, entradas);
 	}
 
+	/**
+	 * Método que realiza a coleta dos dados de um arquivo.
+	 * @return objeto DadosAfnd com todos os dados do automato
+	 */
 	private static DadosAfnd obterRegras() {
 		DadosAfnd dados = new DadosAfnd();
 		/*
@@ -67,21 +75,75 @@ public class ProcessadorAfnd {
 		return dados;
 	}
 
+	/**
+	 * Método onde é realizada a execução de toda a lógica do automato.
+	 * 
+	 * Fluxo: Será setado o estado incial, em seguida o sistema percorrerá cada entrada realizando a lógica do automato e verificando o simbolo epson,
+	 * ao fim, é validado se pelo menos um fluxo finalizou no estado final.
+	 * 
+	 * @param automato: informações do automato
+	 * @param entradas: deve ser uma List<String> com entradas numéricas
+	 */
 	private static void executar(DadosAfnd automato, List<String> entradas) {
 
-		String estadoAtual = automato.getEstadoInicial();
-		
-		System.out.println("Estado inicial -> " + estadoAtual);
-		
+		List<String> estadosAtuais = Arrays.asList(automato.getEstadoInicial());
+
+		System.out.println("Estado inicial -> " + automato.getEstadoInicial());
+
 		for (String entrada : entradas) {
-			
+
 			System.out.println("Símbolo lido -> " + entrada);
+			Set<String> estadoEntrada = new HashSet<String>();
 			
-			int index = automato.getEstados().indexOf(estadoAtual);
-			String estado = automato.getValores()[index][Integer.parseInt(entrada)];
-			System.out.println("Estados correntes -> " + estado);
-			estadoAtual = estado;
+			for (String estado : estadosAtuais) {
+				
+				// Obtem o index no array que o estado pertence (linha)
+				int index = automato.getEstados().indexOf(estado);
+				
+				// Obtem o estado da tabela com base na entrada atual
+				String estadoAtual = automato.getValores()[index][Integer.parseInt(entrada)];
+				
+				// Faz a quebra da string por espaços e filtra os resultados que não são vazios
+				List<String> proximosEstados = Arrays.asList(estadoAtual.split(" "))
+						.stream()
+						.filter(v -> !v.equals(CARACTERE_VAZIO))
+						.collect(Collectors.toList());
+				
+				estadoEntrada.addAll(proximosEstados);
+				
+				// Percorre cada estado selecionado para verificar se existe algum símbolo epson 
+				for (String estadoEpsonEntrada : new ArrayList<String>(estadoEntrada)) {
+					
+					int indexEpson = automato.getEstados().indexOf(estadoEpsonEntrada);
+					String estadoEpson = automato.getValores()[indexEpson][automato.getValores()[0].length - 1];
+					
+					// Verificar se existe o epson na tabela, se sim, ele adiciona nos estados
+					if (estadoEpson != null && !estadoEpson.equals(CARACTERE_VAZIO))
+						estadoEntrada.add(estadoEpson);
+					
+				}
+				
+			}
 			
+			System.out.println("Estados correntes -> " + String.join(" ", estadoEntrada));
+			estadosAtuais = new ArrayList<String>(estadoEntrada);
+
 		}
+		
+		defineResultado(automato.getEstadoFinal(), estadosAtuais);
+		
+	}
+	
+	/**
+	 * Métodos responsável por definir o resultado, retornar e printar no console
+	 * @param estadosFinais
+	 * @param estadosAtuais
+	 * @return boolean
+	 */
+	private static boolean defineResultado(List<String> estadosFinais, List<String> estadosAtuais) {
+		boolean resultado = estadosAtuais.stream().anyMatch(v -> estadosFinais.contains(v));
+		System.out.println(Resultado.getResultadoByValor(resultado));
+		return resultado;
+		
 	}
 }

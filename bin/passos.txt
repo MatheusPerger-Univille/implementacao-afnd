@@ -1,0 +1,20 @@
+Estado inicial -> q1
+Símbolo lido -> 0
+Estados correntes -> q1
+Símbolo lido -> 1
+Estados correntes -> q1 q2 q3
+--------------------------------
+Estado inicial -> q1
+Símbolo lido -> 1
+Estados correntes -> q1 q2 q3
+Símbolo lido -> 0
+Estados correntes -> q1 q3
+--------------------------------
+Estado inicial -> q1
+Símbolo lido -> 0
+Estados correntes -> q1
+Símbolo lido -> 1
+Estados correntes -> q1 q2 q3
+Símbolo lido -> 1
+Estados correntes -> q1 q2 q3 q4
+--------------------------------

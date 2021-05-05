@@ -1,9 +1,14 @@
 package br.com.univille.itc.afnd;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -12,14 +17,90 @@ public class ProcessadorAfnd {
 	public static final String CARACTERE_VAZIO = "*";
 	public static final int LINHA_ESTADOS = 1;
 	public static final int LINHA_ALFABETOS = 2;
+	
+	public static final String NOME_ARQUIVO_OBTER_REGRAS = "automato.txt";
+	public static final String NOME_ARQUIVO_OBTER_ENTRADAS = "entrada.txt";
+	public static final String NOME_ARQUIVO_PASSOS = "passos.txt";
+	public static final String NOME_ARQUIVO_RESULTADOS = "resultado.txt";
 
 	/**
-	 * Método que da inicio ao processo da execução do automato
+	 * Método que da inicio ao processo da execução do automato e grava ao final em um arquivo
+	 * @throws IOException 
 	 */
-	public static void iniciarProcesso() {
+	public static void iniciarProcesso() throws IOException {
 		DadosAfnd dados = obterRegras();
-		List<String> entradas = Arrays.asList("0", "1");
-		executar(dados, entradas);
+		
+		List<List<String>> entradas = obterEntradas();
+		
+		apagarArquivos();
+		
+		for (List<String> listaEntrada : entradas) {
+			List<List<String>> retornos = executar(dados, listaEntrada);
+			boolean resultado = defineResultado(dados.getEstadoFinal(), retornos.get(0));
+			gravarInformacoes(retornos.get(1), Resultado.getResultadoByValor(resultado));
+		}
+		
+	}
+	
+	/**
+	 * Método que reseta os arquivos para uma nova escrita
+	 * @throws IOException
+	 */
+	private static void apagarArquivos() throws IOException {
+		
+		new FileWriter("./resource/" + NOME_ARQUIVO_PASSOS, false).close();
+		new FileWriter("./resource/" + NOME_ARQUIVO_RESULTADOS, false).close();
+	}
+	
+	/**
+	 * Métodos que grava as informações geradas em cada linha de entrada em arquivos de passos e resultados
+	 * @param mensagens - mensagens geradas pelo peocessamento do automato
+	 * @param resultado - resultado da linha de entrada
+	 * @throws IOException
+	 */
+	private static void gravarInformacoes(List<String> mensagens, Resultado resultado) throws IOException {
+		 
+		// Arquivo dos passos
+		File file = new File("./resource/" + NOME_ARQUIVO_PASSOS);
+		FileWriter writer = new FileWriter(file, true);
+		
+		for (String mensagem : mensagens) {
+			writer.write(mensagem);
+			writer.write(System.getProperty( "line.separator" ));
+		}
+		
+		writer.write("--------------------------------");
+		writer.write(System.getProperty( "line.separator" ));
+		writer.close();
+
+		// Arquivo de resultados
+		File fileResult = new File("./resource/" + NOME_ARQUIVO_RESULTADOS);
+		FileWriter writerResult = new FileWriter(fileResult, true);
+		writerResult.write(resultado.name());
+		writerResult.write(System.getProperty( "line.separator" ));
+		writerResult.close();
+		
+	}
+	
+	/**
+	 * Método que obtem a entrada a partir de um arquivo txt
+	 * @return List<List<String>>
+	 */
+	private static List<List<String>> obterEntradas() {
+		List<List<String>> entradas = new ArrayList<>();
+		
+		InputStream is = ProcessadorAfnd.class.getClassLoader().getResourceAsStream(NOME_ARQUIVO_OBTER_ENTRADAS);
+		Scanner in = new Scanner(is);
+		
+		while (in.hasNextLine()) {
+			List<String> values = new ArrayList<>();
+			String[] valores = in.nextLine().split(" ");
+			values.addAll(Arrays.asList(valores));
+			entradas.add(values);
+		}
+		
+		return entradas;
+		
 	}
 
 	/**
@@ -27,51 +108,62 @@ public class ProcessadorAfnd {
 	 * @return objeto DadosAfnd com todos os dados do automato
 	 */
 	private static DadosAfnd obterRegras() {
+		
 		DadosAfnd dados = new DadosAfnd();
-		/*
+		int totalRegistrosTabela = 0;
+		String[][] valores = null;
+		
 		try {
 			int linha = 1;
-			Scanner in = new Scanner(new FileReader("D:\\Programação\\workspace-java\\trabalho_afnd_1\\resource\\automato.txt"));
+			InputStream is = ProcessadorAfnd.class.getClassLoader().getResourceAsStream(NOME_ARQUIVO_OBTER_REGRAS);
+			Scanner in = new Scanner(is);
+			
 			while (in.hasNextLine()) {
-			    String line = in.nextLine();
-			    System.out.println(line);
+			    String linhaCompleta = in.nextLine();
+			    
+			    if (linha == LINHA_ESTADOS) {
+			    	dados.setEstados(Arrays.asList(linhaCompleta.split(" ")));
+			    	linha++;
+			    	continue;
+			    }
+			    
+			    if (linha == LINHA_ALFABETOS) {
+			    	dados.setAlfabeto(Arrays.asList(linhaCompleta.split(" ")));
+			    	linha++;
+			    	continue;
+			    }
+			    
+			    totalRegistrosTabela = dados.getEstados().size() * (dados.getAlfabeto().size() + 1);
+			    
+			    if (valores == null)
+			    	valores = new String[dados.getEstados().size()][dados.getAlfabeto().size() + 1];
+			    
+			    if (linha <= (totalRegistrosTabela + 2)) {
+			    	outerloop:
+			    	for (int i = 0; i < valores.length; i++) {
+			    		
+			    		for (int j = 0; j < dados.getAlfabeto().size() + 1; j++) {
+			    			if (valores[i][j] == null) {
+			    				valores[i][j] = linhaCompleta;
+			    				break outerloop;
+			    			}	
+			    		}
+			    		
+					}
+			    } else if ((totalRegistrosTabela + 2) + 1 == linha) { // Determina o estado inicial
+			    	dados.setValores(valores);
+			    	dados.setEstadoInicial(linhaCompleta);
+			    } else if ((totalRegistrosTabela + 2) + 2 == linha) { // Determina o estado final
+			    	dados.setEstadoFinal(Arrays.asList(linhaCompleta.split(" ")));
+			    }
+			    
 			    linha++;
 			}
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
+			
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		*/
 		
-		
-
-		List<String> estados = Arrays.asList("q1", "q2", "q3", "q4");
-		dados.setEstados(estados);
-
-		List<String> alfabeto = Arrays.asList("0", "1");
-		dados.setAlfabeto(alfabeto);
-
-		String[][] valores = new String[4][3];
-		valores[0][0] = "q1";
-		valores[0][1] = "q1 q2";
-		valores[0][2] = "*";
-		valores[1][0] = "q3";
-		valores[1][1] = "*";
-		valores[1][2] = "q3";
-		valores[2][0] = "*";
-		valores[2][1] = "q4";
-		valores[2][2] = "*";
-		valores[3][0] = "q4";
-		valores[3][1] = "q4";
-		valores[3][2] = "*";
-		dados.setValores(valores);
-
-		String estadoInicial = "q1";
-		dados.setEstadoInicial(estadoInicial);
-
-		List<String> estadoFinal = Arrays.asList("q4");
-		dados.setEstadoFinal(estadoFinal);
-
 		return dados;
 	}
 
@@ -84,15 +176,20 @@ public class ProcessadorAfnd {
 	 * @param automato: informações do automato
 	 * @param entradas: deve ser uma List<String> com entradas numéricas
 	 */
-	private static void executar(DadosAfnd automato, List<String> entradas) {
+	private static List<List<String>> executar(DadosAfnd automato, List<String> entradas) {
+		
+		List<List<String>> retorno = new ArrayList<>();
+		List<String> mensagens = new ArrayList<>();
 
 		List<String> estadosAtuais = Arrays.asList(automato.getEstadoInicial());
 
 		System.out.println("Estado inicial -> " + automato.getEstadoInicial());
+		mensagens.add("Estado inicial -> " + automato.getEstadoInicial());
 
 		for (String entrada : entradas) {
 
 			System.out.println("Símbolo lido -> " + entrada);
+			mensagens.add("Símbolo lido -> " + entrada);
 			Set<String> estadoEntrada = new HashSet<String>();
 			
 			for (String estado : estadosAtuais) {
@@ -126,12 +223,15 @@ public class ProcessadorAfnd {
 			}
 			
 			System.out.println("Estados correntes -> " + String.join(" ", estadoEntrada));
+			mensagens.add("Estados correntes -> " + String.join(" ", estadoEntrada));
 			estadosAtuais = new ArrayList<String>(estadoEntrada);
 
 		}
 		
-		defineResultado(automato.getEstadoFinal(), estadosAtuais);
-		
+		retorno.add(estadosAtuais);
+		retorno.add(mensagens);
+		return retorno;
+			
 	}
 	
 	/**
@@ -141,6 +241,7 @@ public class ProcessadorAfnd {
 	 * @return boolean
 	 */
 	private static boolean defineResultado(List<String> estadosFinais, List<String> estadosAtuais) {
+		
 		boolean resultado = estadosAtuais.stream().anyMatch(v -> estadosFinais.contains(v));
 		System.out.println(Resultado.getResultadoByValor(resultado));
 		return resultado;
